@@ -1,5 +1,11 @@
 const { updateUserSocket, userLeave } = require("../utils/users");
-const { getGrooming, leaveUserFromGrooming } = require("../utils/groomings");
+const {
+  getGrooming,
+  leaveUserFromGrooming,
+  updateParticipantsVote,
+  getResults,
+  resetVotes
+} = require("../utils/groomings");
 
 module.exports = (io) => {
   io.on("connection", (socket) => {
@@ -11,7 +17,7 @@ module.exports = (io) => {
       const isDuplicate = updateUserSocket(lobby.credentials, socket.id);
 
       socket.emit("welcomeMessage", `${nickname} welcome to the Gurubu!`);
-      io.emit("initialize", getGrooming(roomID));
+      io.to(roomID).emit("initialize", getGrooming(roomID));
       if (!isDuplicate) {
         socket.broadcast
           .to(roomID)
@@ -19,7 +25,17 @@ module.exports = (io) => {
       }
     });
 
-    socket.on("userVote", (data) => {});
+    socket.on("userVote", (data, roomID) => {
+      io.to(roomID).emit("voteSent", updateParticipantsVote(socket.id, data));
+    });
+
+    socket.on("showResults", (roomID) => {
+      io.to(roomID).emit("showResults", getResults(socket.id));
+    });
+
+    socket.on("resetVotes", (roomID) => {
+      io.to(roomID).emit("resetVotes", resetVotes(socket.id));
+    });
 
     socket.on("disconnect", () => {
       const roomID = leaveUserFromGrooming(socket.id);

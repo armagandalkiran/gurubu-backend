@@ -7,11 +7,16 @@ const {
 
 exports.createRoom = async (req, res) => {
   const nickName = req.body.nickName;
+  const groomingType = req.body.groomingType;
   if (!nickName) {
     return res.status(400).json({ error: "nickName is required" });
   }
 
-  const result = generateNewRoom(nickName);
+  if(!groomingType){
+    return res.status(400).json({ error: "groomingType is required" });
+  }
+
+  const result = generateNewRoom(nickName, groomingType);
 
   res.status(201).json(result);
 };

@@ -1,10 +1,52 @@
 const uuid = require("uuid");
 const { userJoin, getCurrentUser } = require("../utils/users");
 
+const groomingMode = {
+  0: [
+    {
+      id: 1,
+      name: "storyPoint",
+      points: ["1", "2", "3", "5", "8", "13", "21", "?"],
+    },
+  ],
+  1: [
+    {
+      id: 1,
+      name: "developmentEase",
+      points: ["1", "2", "3", "4", "5", "?"],
+    },
+    {
+      id: 2,
+      name: "customerEffect",
+      points: ["1", "2", "3", "4", "5", "?"],
+    },
+    {
+      id: 3,
+      name: "performance",
+      points: ["1", "2", "3", "4", "5", "?"],
+    },
+    {
+      id: 4,
+      name: "security",
+      points: ["1", "2", "3", "4", "5", "?"],
+    },
+    {
+      id: 5,
+      name: "maintanance",
+      points: ["1", "2", "3", "4", "5", "?"],
+    },
+    {
+      id: 6,
+      name: "storyPoint",
+      points: ["1", "2", "3", "5", "8", "13", "21", "?"],
+    },
+  ],
+};
+
 const rooms = [];
 const groomings = {};
 
-const generateNewRoom = (nickName) => {
+const generateNewRoom = (nickName, groomingType) => {
   const currentTime = new Date().getTime();
   const expireTime = currentTime + 3 * 60 * 60 * 1000;
   const roomID = uuid.v4();
@@ -17,53 +59,32 @@ const generateNewRoom = (nickName) => {
     expiredAt: expireTime,
   };
 
+  user.isAdmin = true;
+
   groomings[roomID] = {
     totalParticipants: 1,
-    mode: "0",
+    mode: groomingType,
     participants: { [user.userID]: user },
-    metrics: [
-      {
-        id: 1,
-        name: "storyPoint",
-        points: ["1", "2", "3", "5", "8", "13", "21", "?"],
-      },
-      {
-        id: 2,
-        name: "test",
-        points: ["1", "2", "3", "5", "8", "13", "21", "?"],
-      },
-      {
-        id: 3,
-        name: "test2",
-        points: ["1", "2", "3", "5", "8", "13", "21", "?"],
-      },
-      {
-        id: 4,
-        name: "test3",
-        points: ["1", "2", "3", "5", "8", "13", "21", "?"],
-      },
-      {
-        id: 5,
-        name: "test4",
-        points: ["1", "2", "3", "5", "8", "13", "21", "?"],
-      },
-      {
-        id: 6,
-        name: "test5",
-        points: ["1", "2", "3", "5", "8", "13", "21", "?"],
-      },
-    ],
+    metrics: groomingMode[groomingType],
     score: 0,
     status: "ongoing",
+    isResultShown: false,
   };
 
   rooms.push(newRoom);
 
-  return { ...newRoom, userID: user.userID, credentials: user.credentials };
+  return {
+    ...newRoom,
+    userID: user.userID,
+    credentials: user.credentials,
+    isAdmin: user.isAdmin,
+  };
 };
 
 const handleJoinRoom = (nickName, roomID) => {
   const user = userJoin(nickName, roomID);
+
+  user.isAdmin = false;
 
   groomings[roomID] = {
     ...groomings[roomID],
@@ -74,7 +95,12 @@ const handleJoinRoom = (nickName, roomID) => {
 
   const room = rooms.find((room) => room.roomID === roomID);
 
-  return { ...room, userID: user.userID, credentials: user.credentials };
+  return {
+    ...room,
+    userID: user.userID,
+    credentials: user.credentials,
+    isAdmin: user.isAdmin,
+  };
 };
 
 const leaveUserFromGrooming = (socketID) => {
@@ -93,8 +119,80 @@ const leaveUserFromGrooming = (socketID) => {
   return user.roomID;
 };
 
+const updateParticipantsVote = (socketID, data) => {
+  const user = getCurrentUser(socketID);
+  if (!user) {
+    return;
+  }
+  const userLobbyData = groomings[user.roomID].participants[user.userID];
+
+  groomings[user.roomID].participants[user.userID] = {
+    ...userLobbyData,
+    votes: data,
+  };
+
+  groomings[user.roomID].score = calculateScore(
+    groomings[user.roomID].mode,
+    groomings[user.roomID].participants
+  );
+
+  return groomings[user.roomID];
+};
+
 const getGrooming = (roomID) => {
   return groomings[roomID];
+};
+
+const calculateScore = (mode, participants) => {
+  if (mode === "0") {
+    let totalVoter = 0;
+    let totalStoryPoint = 0;
+    Object.keys(participants).forEach((participantKey) => {
+      if (participants[participantKey].votes) {
+        const storyPoint = Number(
+          participants[participantKey].votes.storyPoint
+        );
+        if (storyPoint) {
+          totalVoter++;
+          totalStoryPoint += storyPoint;
+        }
+      }
+    });
+
+    return findClosestFibonacci(totalStoryPoint / totalVoter);
+  }
+
+  if (mode === "1") {
+  }
+};
+
+const getResults = (socketID) => {
+  const user = getCurrentUser(socketID);
+  if (!user) {
+    return;
+  }
+
+  groomings[user.roomID].isResultShown = true;
+
+  return groomings[user.roomID];
+};
+
+const resetVotes = (socketID) => {
+  const user = getCurrentUser(socketID);
+  if (!user) {
+    return;
+  }
+
+  groomings[user.roomID].isResultShown = false;
+  groomings[user.roomID].score = 0;
+
+  Object.keys(groomings[user.roomID].participants).forEach((participantKey) => {
+    if (groomings[user.roomID].participants[participantKey].votes) {
+      groomings[user.roomID].participants[participantKey].votes = {};
+    }
+  });
+
+  return groomings[user.roomID];
 };
 
 const getRooms = () => {
@@ -105,6 +203,27 @@ const checkRoomExistance = (roomId) => {
   return rooms.some((room) => room.roomID === roomId);
 };
 
+function findClosestFibonacci(number) {
+  if (number <= 0) {
+    return 0;
+  }
+
+  let prevFibonacci = 0;
+  let currentFibonacci = 1;
+
+  while (currentFibonacci <= number) {
+    const nextFibonacci = prevFibonacci + currentFibonacci;
+    prevFibonacci = currentFibonacci;
+    currentFibonacci = nextFibonacci;
+  }
+
+  if (Math.abs(number - prevFibonacci) <= Math.abs(number - currentFibonacci)) {
+    return prevFibonacci;
+  } else {
+    return currentFibonacci;
+  }
+}
+
 module.exports = {
   checkRoomExistance,
   generateNewRoom,
@@ -112,4 +231,7 @@ module.exports = {
   handleJoinRoom,
   getGrooming,
   leaveUserFromGrooming,
+  updateParticipantsVote,
+  getResults,
+  resetVotes,
 };
