@@ -36,6 +36,7 @@ function updateUserSocket(credentials, socketID) {
     isDuplicate = true;
   }
 
+  user.connected = true;
   user.sockets.push(socketID);
 
   return isDuplicate;
