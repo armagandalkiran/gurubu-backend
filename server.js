@@ -5,7 +5,9 @@ const socketIO = require("socket.io");
 const bodyParser = require("body-parser");
 const groomingSocket = require("./sockets/groomingSocket");
 
-require('dotenv').config();
+const { cleanRoomsAndUsers } = require("./utils/groomings");
+
+require("dotenv").config();
 
 const corsOptions = {
   origin: process.env.CLIENT_URL,
@@ -23,9 +25,10 @@ const server = app.listen(PORT, () => {
 
 const io = socketIO(server, {
   cors: {
-    origin: "*",
+    origin: process.env.CLIENT_URL,
     methods: ["GET", "POST"],
     credentials: true,
   },
 });
 groomingSocket(io);
+cleanRoomsAndUsers();

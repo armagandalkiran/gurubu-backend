@@ -1,5 +1,5 @@
 const uuid = require("uuid");
-const { userJoin, getCurrentUser } = require("../utils/users");
+const { userJoin, getCurrentUser, clearUser } = require("../utils/users");
 
 const groomingMode = {
   0: [
@@ -114,6 +114,10 @@ const handleJoinRoom = (nickName, roomID) => {
 const leaveUserFromGrooming = (socketID) => {
   const user = getCurrentUser(socketID);
   if (!user) {
+    return;
+  }
+
+  if (!groomings[user.roomID]) {
     return;
   }
   const userLobbyData = groomings[user.roomID].participants[user.userID];
@@ -316,6 +320,22 @@ function findClosestFibonacci(number) {
   }
 }
 
+const cleanRoomsAndUsers = () => {
+  setInterval(() => {
+    const currentTime = new Date().getTime();
+    rooms.forEach((room) => {
+      if (room.expiredAt < currentTime) {
+        const indexToRemove = rooms.findIndex(
+          (indexToRemoveRoom) => indexToRemoveRoom.roomID === room.roomID
+        );
+        rooms.splice(indexToRemove, 1);
+        delete groomings[room.roomID];
+        clearUser(room.roomID);
+      }
+    });
+  }, 60000 * 10); // work every 10 minutes
+};
+
 module.exports = {
   checkRoomExistance,
   generateNewRoom,
@@ -326,4 +346,5 @@ module.exports = {
   updateParticipantsVote,
   getResults,
   resetVotes,
+  cleanRoomsAndUsers,
 };

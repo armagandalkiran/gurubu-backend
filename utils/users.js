@@ -71,10 +71,20 @@ function getRoomUsers(roomID) {
   return users.filter((user) => user.roomID === roomID);
 }
 
+function clearUser(roomId) {
+  users.forEach(() => {
+    const indexToRemove = users.findIndex(
+      (indexToRemoveUser) => indexToRemoveUser.roomID === roomId
+    );
+    users.splice(indexToRemove, 1);
+  });
+}
+
 module.exports = {
   userJoin,
   getCurrentUser,
   userLeave,
   getRoomUsers,
   updateUserSocket,
+  clearUser
 };
