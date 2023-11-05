@@ -6,7 +6,7 @@ const bodyParser = require("body-parser");
 const groomingSocket = require("./sockets/groomingSocket");
 
 const corsOptions = {
-  origin: "http://localhost:3000",
+  origin: process.env.CLIENT_URL,
 };
 
 app.use(bodyParser.json());
