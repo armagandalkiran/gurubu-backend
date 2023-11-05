@@ -5,6 +5,8 @@ const socketIO = require("socket.io");
 const bodyParser = require("body-parser");
 const groomingSocket = require("./sockets/groomingSocket");
 
+require('dotenv').config();
+
 const corsOptions = {
   origin: process.env.CLIENT_URL,
 };
